@@ -160,3 +160,102 @@ class GeneratePlaceholderView(View):
                 'error': str(e),
                 'placeholder': 'Tell us more about your situation...'
             }, status=500)
+        
+
+
+class DoctorRecommendationsView(View):
+    """
+    View to display doctor recommendations
+    Phase 2: Process doctor recommendation data from external agent
+    """
+    def get(self, request):
+        """
+        Display the doctor recommendations page
+        Processes doctor information from external agent and displays it
+        """
+        
+        # Get submission data from session (if available)
+        triage_data = request.session.get('triage_data', {})
+        submission_id = triage_data.get('submission_id')
+        
+        # Retrieve the submission to show context
+        submission = None
+        if submission_id:
+            try:
+                submission = TriageSubmission.objects.get(id=submission_id)
+            except TriageSubmission.DoesNotExist:
+                pass
+        
+        # ========================================
+        # MOCK DATA: Example of doctor recommendation from external agent
+        # Based on doctors database table structure
+        # In production, this would come from the external agent API
+        # ========================================
+        doctor_recommendation = {
+            "status": "success",
+            "matched": True,
+            "doctor": {
+                "id": 1,
+                "name": "Dr. Luca Bianchi",
+                "specialist": "Clinical Psychologist",
+                "subspecialty": "Anxiety and Depression",
+                "address": "Via Roma 25",
+                "city": "Turin",
+                "phone": "+39 345 112233 4",
+                "email": "luca.bianchi@mail.com"
+            },
+            "match_reasoning": "Based on your symptoms of anxiety and sleep disturbance related to stress, Dr. Bianchi is an excellent match. He specializes in treating anxiety and depression with evidence-based approaches. His practice focuses on helping patients develop coping strategies and regain emotional balance."
+        }
+        
+        # Format the full text representation (for processing/logging)
+        full_text_recommendation = self._format_doctor_recommendation_text(doctor_recommendation)
+        
+        print("=" * 70)
+        print("DOCTOR RECOMMENDATION (Full Text)")
+        print("=" * 70)
+        print(full_text_recommendation)
+        print("=" * 70)
+        
+        # Render the template with doctor data
+        return render(request, 'core/doctor_recommendations.html', {
+            'doctor_recommendation': doctor_recommendation,
+            'full_text': full_text_recommendation,
+            'submission': submission,
+            'user_email': triage_data.get('email', '')
+        })
+    
+    def _format_doctor_recommendation_text(self, data: dict) -> str:
+        """
+        Format doctor recommendation data as full text
+        This is what would be received from the external agent
+        """
+        doctor = data.get('doctor', {})
+        
+        text_parts = [
+            "=" * 70,
+            "DOCTOR RECOMMENDATION - PHASE 2",
+            "=" * 70,
+            f"\nStatus: {data.get('status', 'Unknown').upper()}",
+            f"Match Found: {'Yes' if data.get('matched') else 'No'}",
+            "\n" + "-" * 70,
+            "RECOMMENDED SPECIALIST",
+            "-" * 70,
+            f"ID: {doctor.get('id', 'N/A')}",
+            f"Name: {doctor.get('name', 'N/A')}",
+            f"Specialist: {doctor.get('specialist', 'N/A')}",
+            f"Subspecialty: {doctor.get('subspecialty', 'N/A')}",
+            f"Address: {doctor.get('address', 'N/A')}",
+            f"City: {doctor.get('city', 'N/A')}",
+            f"Phone: {doctor.get('phone', 'N/A')}",
+            f"Email: {doctor.get('email', 'N/A')}",
+            "\n" + "-" * 70,
+            "MATCH REASONING",
+            "-" * 70,
+            data.get('match_reasoning', 'N/A'),
+            "\n" + "=" * 70,
+            "END OF RECOMMENDATION",
+            "=" * 70
+        ]
+        
+        return "\n".join(text_parts)
+    

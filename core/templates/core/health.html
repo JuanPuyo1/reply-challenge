@@ -64,7 +64,20 @@
             </p>
         </div>
         
-        <a href="{% url 'core:health' %}" role="button" style="margin-top: 1rem;">Start New Assessment</a>
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+            <a href="{% url 'core:doctor_recommendations' %}" 
+               role="button" 
+               style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); flex: 1; min-width: 250px; text-align: center;">
+                👨‍⚕️ View Doctor Recommendations
+            </a>
+            <a href="{% url 'core:health' %}" 
+               role="button" 
+               class="secondary" 
+               style="flex: 1; min-width: 250px; text-align: center;">
+                Start New Assessment
+            </a>
+        </div>
     </article>
     {% else %}
     <!-- Triage Form -->

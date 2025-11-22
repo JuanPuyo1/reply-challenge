@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ul>
+      <li><a href="{% url 'core:health' %}">Health</a></li>
+      <li><a href="{% url 'core:doctor_recommendations' %}">Doctor Recommendations</a></li>
+    </ul>
+  </nav>
+{% endblock %}
+
+{% block content %}
+<article style="max-width: 800px; margin: 0 auto;">
+    <header style="text-align: center; margin-bottom: 2rem;">
+        <h1>Your Recommended Specialist</h1>
+        <p style="color: #666;">Based on your comprehensive assessment</p>
+    </header>
+
+    {% if doctor_recommendation.matched %}
+    
+    <!-- Match Success Banner -->
+    <article style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 1rem; margin-bottom: 2rem;">
+        <p style="margin: 0; font-weight: bold; color: #2e7d32;">✓ Match Found</p>
+    </article>
+
+    <!-- Doctor Profile Card -->
+    <article style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 2rem; margin-bottom: 2rem;">
+        
+        <!-- Doctor Information -->
+        <h2 style="margin-top: 0; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 0.75rem;">
+            {{ doctor_recommendation.doctor.name }}
+        </h2>
+        
+        <div style="margin: 1.5rem 0;">
+            <div style="display: grid; grid-template-columns: auto 1fr; gap: 1rem 2rem; margin-bottom: 1rem;">
+                
+                <strong style="color: #667eea;">Specialist:</strong>
+                <span>{{ doctor_recommendation.doctor.specialist }}</span>
+                
+                <strong style="color: #667eea;">Subspecialty:</strong>
+                <span>{{ doctor_recommendation.doctor.subspecialty }}</span>
+                
+                <strong style="color: #667eea;">Address:</strong>
+                <span>{{ doctor_recommendation.doctor.address }}</span>
+                
+                <strong style="color: #667eea;">City:</strong>
+                <span>{{ doctor_recommendation.doctor.city }}</span>
+                
+                <strong style="color: #667eea;">Phone:</strong>
+                <span><a href="tel:{{ doctor_recommendation.doctor.phone }}" style="color: #667eea; text-decoration: none;">{{ doctor_recommendation.doctor.phone }}</a></span>
+                
+                <strong style="color: #667eea;">Email:</strong>
+                <span><a href="mailto:{{ doctor_recommendation.doctor.email }}" style="color: #667eea; text-decoration: none;">{{ doctor_recommendation.doctor.email }}</a></span>
+                
+            </div>
+        </div>
+
+        <!-- Match Reasoning -->
+        <section style="margin-top: 2rem; padding: 1.5rem; background: #f9f9f9; border-radius: 8px; border-left: 4px solid #667eea;">
+            <h3 style="margin-top: 0; color: #667eea; font-size: 1.1rem;">Why This Specialist</h3>
+            <p style="line-height: 1.7; margin: 0; color: #555;">{{ doctor_recommendation.match_reasoning }}</p>
+        </section>
+
+    </article>
+
+    <!-- Availability Question -->
+    <article style="text-align: center; margin: 2rem 0; padding: 2rem; background: #f8f9ff; border-radius: 8px; border: 2px solid #667eea;">
+        <h3 style="margin-top: 0; color: #667eea;">Ready for the Next Step?</h3>
+        <p style="color: #666; font-size: 1.1rem; margin: 1.5rem 0;">
+            Would you like to check the best availability to book an appointment with {{ doctor_recommendation.doctor.name }}?
+        </p>
+        <p style="color: #999; font-size: 0.9rem; margin-top: 1rem;">
+            <em>(Availability checking feature coming soon)</em>
+        </p>
+    </article>
+
+    <!-- Full Text View (Collapsible) -->
+    <details style="margin: 2rem 0;">
+        <summary style="cursor: pointer; font-weight: bold; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+            View Full Recommendation Text (As Received from Agent)
+        </summary>
+        <pre style="white-space: pre-wrap; font-size: 0.85rem; margin: 1rem 0; padding: 1.5rem; background: #f9f9f9; border-radius: 8px; overflow-x: auto; line-height: 1.6;">{{ full_text }}</pre>
+    </details>
+
+    {% else %}
+    <!-- No Match Found -->
+    <article style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 1.5rem; margin: 2rem 0;">
+        <h3 style="margin-top: 0;">No Match Found</h3>
+        <p>We couldn't find a suitable match at this time. Please try again or contact us directly.</p>
+    </article>
+    {% endif %}
+
+    <!-- Back to Home -->
+    <div style="text-align: center; margin-top: 3rem;">
+        <a href="{% url 'core:health' %}" style="color: #667eea; text-decoration: none;">← Back to Health Assessment</a>
+    </div>
+
+</article>
+{% endblock %}
