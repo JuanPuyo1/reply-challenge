@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ul>
+      <li><a href="{% url 'core:health' %}">Health</a></li>
+    </ul>
+  </nav>
+{% endblock %}
+
+{% block content %}
+<h1>Health</h1>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/@picocss/pico@2/js/pico.min.js"></script>
+{% endblock %}
