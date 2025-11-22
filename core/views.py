@@ -262,3 +262,98 @@ class DoctorRecommendationsView(View):
         
         return "\n".join(text_parts)
     
+
+
+class AvailabilityView(View):
+    """
+    View to display availability and booking
+    Phase 3: Process availability data from external agent
+    """
+    def get(self, request):
+        """
+        Display the availability/booking page
+        Processes booking data from external agent and displays it
+        """
+        
+        # Get triage and doctor data from session
+        triage_data = request.session.get('triage_data', {})
+        
+        # ========================================
+        # MOCK DATA: Example of booking data from external agent
+        # In production, this would come from the external agent API
+        # ========================================
+        booking_data = {
+            "selected_date": "2025-11-25",
+            "selected_time": "05:30 PM",
+            "patient_notes": "",
+            "status": "confirmed",
+            "created_at": "2025-11-22T13:42:39.991778",
+            "conversation_complete": True,
+            "doctor": {
+                "name": "Dr. Luca Bianchi",
+                "specialist": "Clinical Psychologist",
+                "subspecialty": "Anxiety and Depression",
+                "address": "Via Roma 25",
+                "city": "Turin",
+                "phone": "+39 345 112233 4",
+                "email": "luca.bianchi@mail.com"
+            },
+            "patient_email": triage_data.get('email', '')
+        }
+        
+        # Format the full text representation (for processing/logging)
+        full_text_booking = self._format_booking_text(booking_data)
+        
+        print("=" * 70)
+        print("BOOKING DATA (Full Text)")
+        print("=" * 70)
+        print(full_text_booking)
+        print("=" * 70)
+        
+        # Render the template with booking data
+        return render(request, 'core/best_match_booking.html', {
+            'booking': booking_data,
+            'full_text': full_text_booking
+        })
+    
+    def _format_booking_text(self, data: dict) -> str:
+        """
+        Format booking data as full text
+        This is what would be received from the external agent
+        """
+        doctor = data.get('doctor', {})
+        
+        text_parts = [
+            "=" * 70,
+            "APPOINTMENT BOOKING - PHASE 3",
+            "=" * 70,
+            f"\nStatus: {data.get('status', 'Unknown').upper()}",
+            f"Conversation Complete: {'Yes' if data.get('conversation_complete') else 'No'}",
+            f"Created At: {data.get('created_at', 'N/A')}",
+            "\n" + "-" * 70,
+            "APPOINTMENT DETAILS",
+            "-" * 70,
+            f"Selected Date: {data.get('selected_date', 'N/A')}",
+            f"Selected Time: {data.get('selected_time', 'N/A')}",
+            f"Patient Notes: {data.get('patient_notes', 'None')}",
+            "\n" + "-" * 70,
+            "DOCTOR INFORMATION",
+            "-" * 70,
+            f"Name: {doctor.get('name', 'N/A')}",
+            f"Specialist: {doctor.get('specialist', 'N/A')}",
+            f"Subspecialty: {doctor.get('subspecialty', 'N/A')}",
+            f"Address: {doctor.get('address', 'N/A')}",
+            f"City: {doctor.get('city', 'N/A')}",
+            f"Phone: {doctor.get('phone', 'N/A')}",
+            f"Email: {doctor.get('email', 'N/A')}",
+            "\n" + "-" * 70,
+            "PATIENT CONTACT",
+            "-" * 70,
+            f"Email: {data.get('patient_email', 'N/A')}",
+            "\n" + "=" * 70,
+            "END OF BOOKING",
+            "=" * 70
+        ]
+        
+        return "\n".join(text_parts)
+    

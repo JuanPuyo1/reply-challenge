@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ul>
+      <li><a href="{% url 'core:health' %}">Health</a></li>
+      <li><a href="{% url 'core:doctor_recommendations' %}">Doctor Recommendations</a></li>
+      <li><a href="{% url 'core:availability' %}">Booking</a></li>
+    </ul>
+  </nav>
+{% endblock %}
+
+{% block content %}
+<article style="max-width: 700px; margin: 0 auto;">
+    <header style="margin-bottom: 2rem;">
+        <h1>Appointment Ready</h1>
+        <p style="color: #666;">Your appointment is ready to be scheduled with {{ booking.doctor.name }}</p>
+    </header>
+
+    <!-- Appointment Details -->
+    <article style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 2rem; margin-bottom: 2rem;">
+        
+        <h2 style="margin-top: 0; font-size: 1.3rem; border-bottom: 1px solid #ddd; padding-bottom: 0.75rem;">
+            Appointment Details
+        </h2>
+        
+        <div style="margin: 1.5rem 0;">
+            <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-bottom: 1rem;">
+                
+                <strong>Date:</strong>
+                <span>{{ booking.selected_date }}</span>
+                
+                <strong>Time:</strong>
+                <span>{{ booking.selected_time }}</span>
+                
+                {% if booking.patient_notes %}
+                <strong>Notes:</strong>
+                <span>{{ booking.patient_notes }}</span>
+                {% endif %}
+                
+            </div>
+        </div>
+
+        <h2 style="margin-top: 2rem; font-size: 1.3rem; border-bottom: 1px solid #ddd; padding-bottom: 0.75rem;">
+            Doctor Information
+        </h2>
+        
+        <div style="margin: 1.5rem 0;">
+            <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-bottom: 1rem;">
+                
+                <strong>Doctor:</strong>
+                <span>{{ booking.doctor.name }}</span>
+                
+                <strong>Specialist:</strong>
+                <span>{{ booking.doctor.specialist }}</span>
+                
+                <strong>Subspecialty:</strong>
+                <span>{{ booking.doctor.subspecialty }}</span>
+                
+                <strong>Address:</strong>
+                <span>{{ booking.doctor.address }}, {{ booking.doctor.city }}</span>
+                
+                <strong>Phone:</strong>
+                <span><a href="tel:{{ booking.doctor.phone }}" style="color: #333; text-decoration: none;">{{ booking.doctor.phone }}</a></span>
+                
+                <strong>Email:</strong>
+                <span><a href="mailto:{{ booking.doctor.email }}" style="color: #333; text-decoration: none;">{{ booking.doctor.email }}</a></span>
+                
+            </div>
+        </div>
+
+    </article>
+
+    <!-- Confirmation Info -->
+    <article style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 1.5rem; margin-bottom: 2rem;">
+        <p style="margin: 0 0 1rem 0; color: #666;">
+            A confirmation email is going to be sent to <strong>{{ booking.patient_email }}</strong>
+        </p>
+    </article>
+
+    <!-- Book Appointment Button -->
+    <div style="text-align: center; margin: 2rem 0;">
+        <button 
+            onclick="window.location.href='mailto:{{ booking.doctor.email }}?subject=Appointment Confirmation - {{ booking.selected_date }} at {{ booking.selected_time }}&body=Dear {{ booking.doctor.name }},%0D%0A%0D%0AI would like to confirm my appointment on {{ booking.selected_date }} at {{ booking.selected_time }}.%0D%0A%0D%0APatient: {{ booking.patient_email }}%0D%0A%0D%0AThank you.'"
+            style="background: #333; color: white; padding: 0.75rem 2rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;">
+            Book Appointment
+        </button>
+    </div>
+
+    <!-- Full Text View (Collapsible) -->
+    <details style="margin: 2rem 0;">
+        <summary style="cursor: pointer; font-weight: bold; padding: 1rem; background: #f5f5f5; border-radius: 4px;">
+            View Full Booking Text (As Received from Agent)
+        </summary>
+        <pre style="white-space: pre-wrap; font-size: 0.85rem; margin: 1rem 0; padding: 1.5rem; background: #f9f9f9; border-radius: 4px; overflow-x: auto; line-height: 1.6;">{{ full_text }}</pre>
+    </details>
+
+    <!-- Back Navigation -->
+    <div style="text-align: center; margin-top: 3rem;">
+        <a href="{% url 'core:doctor_recommendations' %}" style="color: #666; text-decoration: none; margin-right: 1rem;">Back to Doctor Recommendations</a>
+        <a href="{% url 'core:health' %}" style="color: #666; text-decoration: none;">Back to Health Assessment</a>
+    </div>
+
+</article>
+{% endblock %}
+

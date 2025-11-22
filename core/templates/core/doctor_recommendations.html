@@ -69,9 +69,11 @@
         <p style="color: #666; font-size: 1.1rem; margin: 1.5rem 0;">
             Would you like to check the best availability to book an appointment with {{ doctor_recommendation.doctor.name }}?
         </p>
-        <p style="color: #999; font-size: 0.9rem; margin-top: 1rem;">
-            <em>(Availability checking feature coming soon)</em>
-        </p>
+        <a href="{% url 'core:availability' %}" 
+           role="button" 
+           style="margin-top: 1rem;">
+            Check Best Availability
+        </a>
     </article>
 
     <!-- Full Text View (Collapsible) -->
