@@ -1,0 +1,15 @@
+# Django Framework
+Django==5.2.8
+
+# AI/ML Libraries
+langchain==0.3.13
+langchain-openai==0.2.14
+openai==1.59.3
+
+# Additional Dependencies
+python-dotenv==1.0.0  # For environment variable management
+
+# Optional but recommended for production
+gunicorn==23.0.0  # WSGI server for production
+whitenoise==6.8.2  # Static file serving
+

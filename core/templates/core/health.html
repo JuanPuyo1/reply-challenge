@@ -9,9 +9,208 @@
 {% endblock %}
 
 {% block content %}
-<h1>Health</h1>
+<article style="max-width: 800px; margin: 0 auto;">
+    <header>
+        <p>Let's find the right specialist for you. Tell us what brings you here today.</p>
+    </header>
+
+    {% if safety_alert %}
+    <!-- Safety Alert - Crisis Intervention -->
+    <article style="background: #ffebee; border-left: 4px solid #c62828; padding: 1.5rem; margin: 1rem 0;">
+        <h3 style="color: #c62828; margin-top: 0;">Immediate Support Available</h3>
+        <p><strong>If you're experiencing thoughts of self-harm or suicide, please reach out for immediate help:</strong></p>
+        <ul>
+            <li><strong>Italia Suicide & Crisis Lifeline:</strong> <a href="tel:988" style="font-size: 1.5rem; font-weight: bold;">988</a></li>
+        </ul>
+        <p>You are not alone. These services are free, confidential, and available 24/7.</p>
+    </article>
+    {% endif %}
+
+    {% if error %}
+    <article style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; margin: 1rem 0;">
+        <p style="margin: 0;"><strong>Error:</strong> {{ error }}</p>
+    </article>
+    {% endif %}
+
+    {% if submitted and not safety_alert %}
+    <!-- Success Message with Unified Analysis -->
+    <article style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 1.5rem; margin: 1rem 0;">
+        <h3 style="color: #2e7d32; margin-top: 0;">✓ Analysis Complete</h3>
+        <p><strong>Thank you, we've processed your submission and will contact you at {{ email }}</strong></p>
+        
+        <!-- Quick Triage Results (First Agent) -->
+        <details open style="margin: 1rem 0; padding: 1rem; background: white; border-radius: 8px;">
+            <summary style="cursor: pointer; font-weight: bold; color: #2e7d32;">Quick Triage Assessment</summary>
+            <div style="padding: 1rem 0;">
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin: 0.5rem 0;"><strong>Category:</strong> {{ analysis.category|title }}</li>
+                    <li style="margin: 0.5rem 0;"><strong>Urgency Level:</strong> {{ analysis.urgency|title }}</li>
+                    <li style="margin: 0.5rem 0;"><strong>Initial Assessment:</strong> {{ analysis.reasoning }}</li>
+                </ul>
+            </div>
+        </details>
+        
+        <!-- Complete Unified Report -->
+        <details open style="margin: 1rem 0; padding: 1rem; background: white; border-radius: 8px;">
+            <summary style="cursor: pointer; font-weight: bold; color: #1565c0;">Complete Clinical Report (User Data + AI Analysis)</summary>
+            <pre style="white-space: pre-wrap; font-size: 0.9rem; margin: 1rem 0; padding: 1rem; background: #f9f9f9; border-radius: 4px; overflow-x: auto; line-height: 1.6;">{{ submission.full_text_content }}</pre>
+        </details>
+        
+        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #ddd;">
+            <p style="font-size: 0.9rem; color: #666;">
+                <strong>Submission ID:</strong> {{ submission.id }}<br>
+                <strong>Saved:</strong> {{ submission.created_at|date:"F d, Y at h:i A" }}<br>
+                <strong>Next Steps:</strong> We'll match you with specialists from our network and send booking options to your email.
+            </p>
+        </div>
+        
+        <a href="{% url 'core:health' %}" role="button" style="margin-top: 1rem;">Start New Assessment</a>
+    </article>
+    {% else %}
+    <!-- Triage Form -->
+    <form method="post" enctype="multipart/form-data" id="triageForm">
+        {% csrf_token %}
+        
+        <!-- Email Field -->
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="id_email">
+                <strong>{{ form.email.label }}</strong>
+                <small style="display: block; color: #666; margin-top: 0.25rem;">{{ form.email.help_text }}</small>
+            </label>
+            {{ form.email }}
+            {% if form.email.errors %}
+                <small style="color: #c62828;">{{ form.email.errors.0 }}</small>
+            {% endif %}
+        </div>
+
+        <!-- Symptoms Field -->
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="id_symptoms">
+                <strong>{{ form.symptoms.label }}</strong>
+                <small style="display: block; color: #666; margin-top: 0.25rem;">{{ form.symptoms.help_text }}</small>
+            </label>
+            {{ form.symptoms }}
+            {% if form.symptoms.errors %}
+                <small style="color: #c62828;">{{ form.symptoms.errors.0 }}</small>
+            {% endif %}
+        </div>
+
+        <!-- Clinical History Upload -->
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="id_clinical_history">
+                <strong>{{ form.clinical_history.label }}</strong>
+                <small style="display: block; color: #666; margin-top: 0.25rem;">{{ form.clinical_history.help_text }}</small>
+            </label>
+            {{ form.clinical_history }}
+            {% if form.clinical_history.errors %}
+                <small style="color: #c62828;">{{ form.clinical_history.errors.0 }}</small>
+            {% endif %}
+        </div>
+
+        <!-- Additional Context (Dynamic Placeholder) -->
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="id_additional_context">
+                <strong>{{ form.additional_context.label }}</strong>
+                <small style="display: block; color: #666; margin-top: 0.25rem;">{{ form.additional_context.help_text }}</small>
+            </label>
+            {{ form.additional_context }}
+            <small id="placeholderStatus" style="color: #1976d2; display: none;">
+                Personalizing your form...
+            </small>
+            {% if form.additional_context.errors %}
+                <small style="color: #c62828;">{{ form.additional_context.errors.0 }}</small>
+            {% endif %}
+        </div>
+
+        <button type="submit" style="width: 100%;">Continue to Analysis</button>
+    </form>
+    {% endif %}
+
+    <!-- How It Works -->
+    <details style="margin-top: 2rem;">
+        <summary><strong>How does this work?</strong></summary>
+        <div style="padding: 1rem 0;">
+            <ol>
+                <li><strong>Share Your Experience:</strong> Tell us what you're going through in your own words.</li>
+                <li><strong>AI Analysis:</strong> Our AI agent analyzes your symptoms to understand your needs.</li>
+                <li><strong>Smart Matching (Phase 2):</strong> We'll match you with specialists from our partner network based on their expertise and your needs.</li>
+                <li><strong>Book Appointment (Phase 2):</strong> Choose a convenient time and confirm your appointment.</li>
+            </ol>
+            <p><em>Currently in Phase 1: Dynamic form with AI-powered context understanding.</em></p>
+        </div>
+    </details>
+</article>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/@picocss/pico@2/js/pico.min.js"></script>
+<script>
+// Dynamic Placeholder Generation
+(function() {
+    const symptomsField = document.getElementById('id_symptoms');
+    const additionalContextField = document.getElementById('id_additional_context');
+    const clinicalHistoryField = document.getElementById('id_clinical_history');
+    const statusIndicator = document.getElementById('placeholderStatus');
+    
+    let debounceTimer;
+    let lastSymptoms = '';
+    
+    if (!symptomsField || !additionalContextField) return;
+    
+    // Function to generate dynamic placeholder
+    async function generatePlaceholder() {
+        const symptoms = symptomsField.value.trim();
+        
+        // Skip if too short or unchanged
+        if (symptoms.length < 10 || symptoms === lastSymptoms) return;
+        
+        lastSymptoms = symptoms;
+        
+        // Show loading state
+        statusIndicator.style.display = 'block';
+        statusIndicator.textContent = 'Personalizing your form...';
+        
+        try {
+            const response = await fetch('{% url "core:generate_placeholder" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    symptoms: symptoms,
+                    has_clinical_history: clinicalHistoryField.files.length > 0
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success && data.placeholder) {
+                additionalContextField.placeholder = data.placeholder;
+                statusIndicator.textContent = 'Form personalized for you';
+                setTimeout(() => {
+                    statusIndicator.style.display = 'none';
+                }, 3000);
+            } else {
+                statusIndicator.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error generating placeholder:', error);
+            statusIndicator.style.display = 'none';
+        }
+    }
+    
+    // Debounced input handler
+    symptomsField.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(generatePlaceholder, 1500); // Wait 1.5s after user stops typing
+    });
+    
+    // Also update when file is uploaded
+    clinicalHistoryField.addEventListener('change', function() {
+        if (symptomsField.value.trim().length >= 10) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(generatePlaceholder, 500);
+        }
+    });
+})();
+</script>
 {% endblock %}
