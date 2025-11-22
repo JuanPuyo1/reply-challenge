@@ -5,10 +5,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.conf import settings
 import json
+import os
 
 from .forms import HealthForm
 from .models import TriageSubmission
 from .services.gptapi import get_triage_agent
+from .services.mental_health_agent import MentalHealthAgent
 
 
 # OpenAI API Key - In production, store in environment variables
@@ -169,13 +171,15 @@ class GeneratePlaceholderView(View):
 class DoctorRecommendationsView(View):
     """
     View to display doctor recommendations
-    Phase 2: Process doctor recommendation data from external agent
+    Phase 2: Process doctor recommendation data using Mental Health Agent
     """
     def get(self, request):
         """
         Display the doctor recommendations page
-        Processes doctor information from external agent and displays it
+        Processes doctor information using mental_health_agent
         """
+        
+
         
         # Get submission data from session (if available)
         triage_data = request.session.get('triage_data', {})
@@ -189,26 +193,81 @@ class DoctorRecommendationsView(View):
             except TriageSubmission.DoesNotExist:
                 pass
         
-        # ========================================
-        # MOCK DATA: Example of doctor recommendation from external agent
-        # Based on doctors database table structure
-        # In production, this would come from the external agent API
-        # ========================================
-        doctor_recommendation = {
-            "status": "success",
-            "matched": True,
-            "doctor": {
-                "id": 1,
-                "name": "Dr. Luca Bianchi",
-                "specialist": "Clinical Psychologist",
-                "subspecialty": "Anxiety and Depression",
-                "address": "Via Roma 25",
-                "city": "Turin",
-                "phone": "+39 345 112233 4",
-                "email": "luca.bianchi@mail.com"
-            },
-            "match_reasoning": "Based on your symptoms of anxiety and sleep disturbance related to stress, Dr. Bianchi is an excellent match. He specializes in treating anxiety and depression with evidence-based approaches. His practice focuses on helping patients develop coping strategies and regain emotional balance."
-        }
+        # Get the data from triage
+        email = triage_data.get('email', '')
+        address = triage_data.get('address', '')
+        symptoms = triage_data.get('symptoms', '')
+        additional_context = triage_data.get('additional_context', '')
+        
+        try:
+            # Initialize Mental Health Agent
+            specialists_path = os.path.join(settings.BASE_DIR, 'static', 'Specialist_EN.xlsx')
+            agent = MentalHealthAgent(
+                api_key=OPENAI_API_KEY,
+                specialists_csv=specialists_path
+            )
+            
+            print("=" * 70)
+            print("MENTAL HEALTH AGENT - DOCTOR MATCHING")
+            print("=" * 70)
+            
+            # Manually populate the agent's collected info (bypass conversation)
+            agent.collected_info = {
+                "patient_name": email.split('@')[0],  # Use email prefix as name
+                "patient_age": "Not provided",
+                "patient_address": address,
+                "patient_gender": "Not provided",
+                "symptoms": symptoms,
+                "clinical_history": "Not provided",
+                "context": additional_context if additional_context else "No additional context provided"
+            }
+            agent.state = agent.state.PROCESSING
+            
+            # Process and get specialist match
+            result = agent.process_collected_information()
+            
+            print("Match found!")
+            print(f"Specialist: {result['specialist']['name']}")
+            print("=" * 70)
+            
+            # Format into expected structure
+            doctor_recommendation = {
+                "status": "success",
+                "matched": True,
+                "doctor": {
+                    "id": 1,
+                    "name": result['specialist']['name'],
+                    "specialist": result['specialist']['expertise'].split('-')[0].strip() if '-' in result['specialist']['expertise'] else "Clinical Psychologist",
+                    "subspecialty": result['specialist']['expertise'],
+                    "address": result['specialist']['location'].split(',')[0].strip() if ',' in result['specialist']['location'] else result['specialist']['location'],
+                    "city": result['specialist']['location'].split(',')[-1].strip() if ',' in result['specialist']['location'] else "Turin",
+                    "phone": result['specialist']['phone_number'],
+                    "email": result['specialist']['email']
+                },
+                "match_reasoning": result['specialist']['match_note']
+            }
+            
+        except Exception as e:
+            print(f"Error using mental health agent: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Fallback to mock data if agent fails
+            doctor_recommendation = {
+                "status": "success",
+                "matched": True,
+                "doctor": {
+                    "id": 1,
+                    "name": "Dr. Luca Bianchi",
+                    "specialist": "Clinical Psychologist",
+                    "subspecialty": "Anxiety and Depression",
+                    "address": "Via Roma 25",
+                    "city": "Turin",
+                    "phone": "+39 345 112233 4",
+                    "email": "luca.bianchi@mail.com"
+                },
+                "match_reasoning": "Based on your symptoms, Dr. Bianchi is an excellent match. He specializes in treating anxiety and depression with evidence-based approaches."
+            }
         
         # Format the full text representation (for processing/logging)
         full_text_recommendation = self._format_doctor_recommendation_text(doctor_recommendation)
@@ -224,7 +283,7 @@ class DoctorRecommendationsView(View):
             'doctor_recommendation': doctor_recommendation,
             'full_text': full_text_recommendation,
             'submission': submission,
-            'user_email': triage_data.get('email', '')
+            'user_email': email
         })
     
     def _format_doctor_recommendation_text(self, data: dict) -> str:

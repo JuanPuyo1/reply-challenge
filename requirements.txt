@@ -6,6 +6,11 @@ langchain==0.3.13
 langchain-openai==0.2.14
 openai==1.59.3
 
+# Data Processing
+pandas==2.2.3  # For specialist database management
+openpyxl==3.1.2  # For Excel file reading
+xlrd==2.0.1  # For Excel file reading
+
 # Additional Dependencies
 python-dotenv==1.0.0  # For environment variable management
 
