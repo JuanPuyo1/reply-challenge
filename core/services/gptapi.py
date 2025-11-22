@@ -107,7 +107,7 @@ class TriageAgent:
                 "reasoning": "Unable to analyze at this time"
             }
     
-    def process_full_submission(self, email: str, symptoms: str, additional_context: str = "", 
+    def process_full_submission(self, email: str, address: str, symptoms: str, additional_context: str = "", 
                                has_clinical_history: bool = False) -> str:
         """
         SECOND AGENT: Deep processing of the complete submission
@@ -118,6 +118,7 @@ class TriageAgent:
         
         Args:
             email: User's email
+            address: User's address (country, city, street)
             symptoms: User's symptoms
             additional_context: Additional context provided
             has_clinical_history: Whether clinical history was uploaded
@@ -128,6 +129,7 @@ class TriageAgent:
         # Create user submission section
         user_data = self._create_user_submission_text(
             email=email,
+            address=address,
             symptoms=symptoms,
             additional_context=additional_context,
             has_clinical_history=has_clinical_history
@@ -174,7 +176,7 @@ Provide your comprehensive clinical analysis as a detailed report."""
             ai_analysis = "Unable to complete comprehensive analysis at this time. Patient presents with symptoms requiring professional evaluation. Recommend general mental health assessment."
             return self._create_unified_document(user_data, ai_analysis)
     
-    def _create_user_submission_text(self, email: str, symptoms: str, 
+    def _create_user_submission_text(self, email: str, address: str, symptoms: str, 
                                      additional_context: str = "", 
                                      has_clinical_history: bool = False) -> str:
         """
@@ -188,6 +190,7 @@ Provide your comprehensive clinical analysis as a detailed report."""
             "=" * 70,
             f"\nSubmission Date: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}",
             f"Patient Contact: {email}",
+            f"Patient Address: {address}",
             f"Clinical History on File: {'Yes' if has_clinical_history else 'No'}",
             "\n" + "-" * 70,
             "PRESENTING SYMPTOMS:",

@@ -10,6 +10,17 @@ class HealthForm(forms.Form):
         }),
         help_text="We'll use this to send you a link to your analysis."
     )
+    
+    address = forms.CharField(
+        label="Address",
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Country, City, Address (e.g., "Italy, Turin, Via Roma 15")'
+        }),
+        help_text="Your location helps us match you with nearby specialists."
+    )
+    
     symptoms = forms.CharField(
         label="Symptoms",
         widget=forms.Textarea(attrs={

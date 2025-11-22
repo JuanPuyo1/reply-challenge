@@ -29,6 +29,7 @@ class HealthView(View):
         
         if form.is_valid():
             email = form.cleaned_data['email']
+            address = form.cleaned_data['address']
             symptoms = form.cleaned_data['symptoms']
             clinical_history = form.cleaned_data.get('clinical_history')
             additional_context = form.cleaned_data.get('additional_context', '')
@@ -75,6 +76,7 @@ Standard processing bypassed for immediate response.
                 print("Running Second Agent: Deep Processing Analysis...")
                 unified_text = agent.process_full_submission(
                     email=email,
+                    address=address,
                     symptoms=symptoms,
                     additional_context=additional_context,
                     has_clinical_history=clinical_history is not None
@@ -93,6 +95,7 @@ Standard processing bypassed for immediate response.
                 request.session['triage_data'] = {
                     'submission_id': submission.id,
                     'email': email,
+                    'address': address,
                     'symptoms': symptoms,
                     'additional_context': additional_context,
                     'has_clinical_history': clinical_history is not None,
