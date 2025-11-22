@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ul>
+      <li><a href="{% url 'core:health' %}">Health</a></li>
+      <li><a href="{% url 'core:doctor_recommendations' %}">Doctor Recommendations</a></li>
+      <li><a href="{% url 'core:availability_preference' %}">Availability Preference</a></li>
+    </ul>
+  </nav>
+{% endblock %}
+
+{% block content %}
+<article style="max-width: 600px; margin: 0 auto;">
+    
+    {% if success %}
+    <!-- Success Message -->
+    <article style="background: #d4edda; border: 2px solid #28a745; border-radius: 8px; padding: 2rem; margin-bottom: 2rem; text-align: center;">
+        <h1 style="color: #155724; margin-top: 0;">✓ Appointment Booked!</h1>
+        <p style="color: #155724; font-size: 1.1rem; margin: 1rem 0;">
+            Your appointment has been successfully scheduled with <strong>{{ doctor.name }}</strong>
+        </p>
+        
+        <div style="background: white; border: 1px solid #28a745; border-radius: 4px; padding: 1.5rem; margin: 2rem 0; text-align: left;">
+            <h3 style="margin-top: 0; color: #28a745;">Appointment Details</h3>
+            <div style="display: grid; grid-template-columns: 120px 1fr; gap: 0.75rem; margin: 1rem 0;">
+                <strong>Date:</strong>
+                <span>{{ booking.selected_date }}</span>
+                
+                <strong>Time:</strong>
+                <span>{{ booking.selected_time }}</span>
+                
+                <strong>Doctor:</strong>
+                <span>{{ doctor.name }}</span>
+                
+                <strong>Specialty:</strong>
+                <span>{{ doctor.subspecialty }}</span>
+                
+                <strong>Address:</strong>
+                <span>{{ doctor.address }}</span>
+                
+                <strong>Email:</strong>
+                <span><a href="mailto:{{ doctor.email }}" style="color: #667eea;">{{ doctor.email }}</a></span>
+                
+                <strong>Phone:</strong>
+                <span><a href="tel:{{ doctor.phone }}" style="color: #667eea;">{{ doctor.phone }}</a></span>
+            </div>
+        </div>
+        
+        <p style="color: #155724; margin: 1.5rem 0;">
+            A confirmation email has been sent to <strong>{{ booking.patient_email }}</strong>
+        </p>
+        
+        <div style="margin-top: 2rem;">
+            <a href="{% url 'core:health' %}" 
+               style="background: #28a745; color: white; padding: 0.75rem 2rem; border-radius: 4px; text-decoration: none; display: inline-block;">
+                Back to Home
+            </a>
+        </div>
+    </article>
+    
+    {% elif error %}
+    <!-- Error Message -->
+    <article style="background: #f8d7da; border: 2px solid #d32f2f; border-radius: 8px; padding: 2rem; margin-bottom: 2rem; text-align: center;">
+        <h1 style="color: #721c24; margin-top: 0;">⚠ Booking Error</h1>
+        <p style="color: #721c24; font-size: 1.1rem; margin: 1rem 0;">
+            {{ error }}
+        </p>
+        <div style="margin-top: 2rem;">
+            <a href="{% url 'core:availability_preference' %}" 
+               style="background: #d32f2f; color: white; padding: 0.75rem 2rem; border-radius: 4px; text-decoration: none; display: inline-block;">
+                Try Again
+            </a>
+        </div>
+    </article>
+    
+    {% else %}
+    <!-- Booking Form -->
+    <header style="margin-bottom: 2rem;">
+        <h1>Book Your Appointment</h1>
+        <p style="color: #666;">
+            Select your preferred time to book an appointment with <strong>{{ doctor.name }}</strong>. 
+            The system will find the best available slot and send a confirmation email.
+        </p>
+    </header>
+
+    <form method="post" style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 2rem;">
+        {% csrf_token %}
+        
+        <!-- Time Preference Field -->
+        <div style="margin-bottom: 1.5rem;">
+            <label for="{{ form.time_preference.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">
+                {{ form.time_preference.label }}
+            </label>
+            {{ form.time_preference }}
+            {% if form.time_preference.help_text %}
+            <small style="display: block; margin-top: 0.25rem; color: #666;">
+                {{ form.time_preference.help_text }}
+            </small>
+            {% endif %}
+            {% if form.time_preference.errors %}
+            <div style="color: #d32f2f; margin-top: 0.5rem;">
+                {{ form.time_preference.errors }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Urgency Checkbox -->
+        <div style="margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                {{ form.is_urgent }}
+                <label for="{{ form.is_urgent.id_for_label }}" style="margin: 0;">
+                    {{ form.is_urgent.label }}
+                </label>
+            </div>
+            {% if form.is_urgent.help_text %}
+            <small style="display: block; margin-top: 0.25rem; margin-left: 1.5rem; color: #666;">
+                {{ form.is_urgent.help_text }}
+            </small>
+            {% endif %}
+            {% if form.is_urgent.errors %}
+            <div style="color: #d32f2f; margin-top: 0.5rem;">
+                {{ form.is_urgent.errors }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Submit Button -->
+        <div style="margin-top: 2rem;">
+            <button 
+                type="submit" 
+                style="background: #28a745; color: white; padding: 0.75rem 2rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; width: 100%; font-weight: bold;">
+                Book Appointment & Send Confirmation
+            </button>
+            <p style="text-align: center; color: #666; font-size: 0.9rem; margin-top: 1rem;">
+                This will schedule your appointment and send a confirmation email
+            </p>
+        </div>
+    </form>
+
+    <!-- Doctor Info Summary -->
+    <article style="margin-top: 2rem; padding: 1.5rem; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;">
+        <h3 style="margin-top: 0; font-size: 1.1rem;">Appointment With:</h3>
+        <p style="margin: 0.5rem 0; color: #333;">
+            <strong>{{ doctor.name }}</strong><br>
+            {{ doctor.specialist }}{% if doctor.subspecialty %} - {{ doctor.subspecialty }}{% endif %}<br>
+            {{ doctor.address }}, {{ doctor.city }}
+        </p>
+    </article>
+
+    <!-- Back Navigation -->
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="{% url 'core:doctor_recommendations' %}" style="color: #666; text-decoration: none;">
+            ← Back to Doctor Recommendations
+        </a>
+    </div>
+    
+    {% endif %}
+
+</article>
+{% endblock %}
+

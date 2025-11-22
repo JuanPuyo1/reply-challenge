@@ -11,6 +11,8 @@
 {% endblock %}
 
 {% block content %}
+{% load static %}
+{% csrf_token %}
 <article style="max-width: 700px; margin: 0 auto;">
     <header style="margin-bottom: 2rem;">
         <h1>Appointment Ready</h1>
@@ -81,11 +83,62 @@
     <!-- Book Appointment Button -->
     <div style="text-align: center; margin: 2rem 0;">
         <button 
-            onclick="window.location.href='mailto:{{ booking.doctor.email }}?subject=Appointment Confirmation - {{ booking.selected_date }} at {{ booking.selected_time }}&body=Dear {{ booking.doctor.name }},%0D%0A%0D%0AI would like to confirm my appointment on {{ booking.selected_date }} at {{ booking.selected_time }}.%0D%0A%0D%0APatient: {{ booking.patient_email }}%0D%0A%0D%0AThank you.'"
+            id="bookAppointmentBtn"
             style="background: #333; color: white; padding: 0.75rem 2rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;">
             Book Appointment
         </button>
+        <div id="bookingStatus" style="margin-top: 1rem; display: none;"></div>
     </div>
+
+    <script>
+    document.getElementById('bookAppointmentBtn').addEventListener('click', function() {
+        const btn = this;
+        const statusDiv = document.getElementById('bookingStatus');
+        
+        // Disable button and show loading
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        btn.style.background = '#666';
+        statusDiv.style.display = 'block';
+        statusDiv.textContent = 'Sending confirmation email...';
+        statusDiv.style.color = '#666';
+        
+        // Get CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        // Send POST request to book appointment
+        fetch('{% url "core:book_appointment" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                statusDiv.textContent = '✓ ' + data.message;
+                statusDiv.style.color = '#28a745';
+                btn.textContent = 'Appointment Booked!';
+                btn.style.background = '#28a745';
+            } else {
+                statusDiv.textContent = '✗ ' + data.message;
+                statusDiv.style.color = '#d32f2f';
+                btn.disabled = false;
+                btn.textContent = 'Book Appointment';
+                btn.style.background = '#333';
+            }
+        })
+        .catch(error => {
+            statusDiv.textContent = '✗ Error: ' + error.message;
+            statusDiv.style.color = '#d32f2f';
+            btn.disabled = false;
+            btn.textContent = 'Book Appointment';
+            btn.style.background = '#333';
+        });
+    });
+    </script>
 
     <!-- Full Text View (Collapsible) -->
     <details style="margin: 2rem 0;">

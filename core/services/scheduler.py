@@ -1,11 +1,13 @@
 import os
 import json
+import requests
 from openai import OpenAI
 from datetime import datetime
 from dotenv import load_dotenv
 import argparse
 from datetime import datetime, timedelta, time
 import re
+
 
 DAY_MAP = {
     "Mon": 0,
@@ -308,6 +310,32 @@ def update_appointment_json(appointment_json, field, value):
         "field": field,
         "message": f"Updated {field} in appointment JSON"
     }
+def email_send(final_json):
+    # Build the message for Lambda
+    name = final_json["patient_name"]
+    email = "no-reply@yourapp.com"   # Lambda requires 'email'; use a placeholder if needed
+
+    message = (
+        f"Dear {final_json['doctor_name']}, patient {final_json['patient_name']} "
+        f"has booked an appointment on {final_json['selected_date']} at "
+        f"{final_json['selected_time']}. Symptoms: {final_json['symptoms']}. "
+        f"Notes: {final_json.get('patient_notes', '')}."
+    )
+
+    payload = {
+        "name": name,
+        "email": email,
+        "message": message
+    }
+
+    api = "https://w5ptej3v39.execute-api.us-east-1.amazonaws.com/Contact"
+
+    try:
+        response = requests.post(api, json=payload)
+        response.raise_for_status()
+        print("Email sent successfully:", response.text)
+    except requests.exceptions.RequestException as e:
+        print("Error sending email:", e)
 
 
 def finalize_appointment(appointment_json):
@@ -325,6 +353,7 @@ def finalize_appointment(appointment_json):
         "created_at": datetime.now().isoformat(),
         "conversation_complete": True
     }
+    email_send(final_json)
     with open("final_appointment.json", "w") as f:
         json.dump(final_json, f, indent=2)
     return {
@@ -358,6 +387,86 @@ def execute_function(function_name, arguments, appointment_json):
         return finalize_appointment(appointment_json)
     else:
         return {"error": f"Unknown function: {function_name}"}
+
+
+def run_automated_scheduling(initial_json):
+    """
+    Runs automated appointment scheduling WITHOUT conversation.
+    Directly processes time preference and urgency to find best appointment.
+    
+    Args:
+        initial_json: Dictionary containing:
+            - doctor_schedule: Built schedule
+            - is_urgent: Boolean or string
+            - time_preference: "morning", "afternoon", or "evening"
+            - patient_name, doctor_name, symptoms, etc.
+    
+    Returns:
+        Final appointment JSON with selected date/time
+    """
+    appointment_json = initial_json.copy()
+    doctor_schedule = appointment_json.get("doctor_schedule", {})
+    is_urgent = appointment_json.get("is_urgent", False)
+    time_preference = appointment_json.get("time_preference")
+    symptoms = appointment_json.get("symptoms", "")
+    
+    print(f"Running automated scheduler...")
+    print(f"  Time Preference: {time_preference}")
+    print(f"  Urgent: {is_urgent}")
+    
+    # Step 1: Process urgency to filter dates
+    urgency_result = collect_urgency(is_urgent, doctor_schedule)
+    appointment_json["filtered_schedule"] = urgency_result.get("filtered_schedule", {})
+    appointment_json["is_urgent"] = urgency_result.get("is_urgent", False)
+    
+    print(f"  Filtered to {len(appointment_json['filtered_schedule'])} dates")
+    
+    # Step 2: Filter by time preference
+    if time_preference:
+        time_result = filter_by_time_preference(time_preference, appointment_json["filtered_schedule"])
+        appointment_json["time_preference"] = time_preference
+        appointment_json["available_slots"] = time_result.get("available_slots", {})
+        print(f"  Found {len(appointment_json['available_slots'])} available {time_preference} slots")
+    else:
+        # If no preference, use all slots
+        time_result = filter_by_time_preference("morning", appointment_json["filtered_schedule"])
+        appointment_json["available_slots"] = time_result.get("available_slots", {})
+        print(f"  No preference, using all available slots")
+    
+    # Step 3: Select best appointment
+    if appointment_json["available_slots"]:
+        selection_result = select_best_appointment(
+            appointment_json["available_slots"],
+            appointment_json["is_urgent"],
+            symptoms
+        )
+        
+        appointment_json["selected_date"] = selection_result.get("selected_date")
+        appointment_json["selected_time"] = selection_result.get("selected_time")
+        appointment_json["selected_slot_number"] = selection_result.get("selected_slot_number")
+        
+        print(f"  Selected: {appointment_json['selected_date']} at {appointment_json['selected_time']}")
+    else:
+        print("  ERROR: No available slots found")
+        return None
+    
+    # Step 4: Finalize (without sending email yet)
+    final_json = {
+        "doctor_name": appointment_json.get("doctor_name"),
+        "doctor_email": appointment_json.get("doctor_email"),
+        "patient_name": appointment_json.get("patient_name"),
+        "symptoms": appointment_json.get("symptoms"),
+        "selected_date": appointment_json.get("selected_date"),
+        "selected_time": appointment_json.get("selected_time"),
+        "patient_notes": appointment_json.get("patient_notes", ""),
+        "status": "confirmed",
+        "created_at": datetime.now().isoformat(),
+        "conversation_complete": True
+    }
+    
+    print("  Booking prepared (email will be sent when user clicks 'Book Appointment')")
+    
+    return final_json
 
 
 def run_scheduling_conversation(initial_json):
@@ -502,10 +611,11 @@ IMPORTANT:
 
 
 if __name__ == "__main__":
-    args = argparse.ArgumentParser(description="Medical Appointment Scheduler")
-    args.add_argument("--json_file", type=str, help="Path to initial appointment JSON file", required=False)
-    parsed_args = args.parse_args()
-    json_file = parsed_args.json_file
+    
+    import json
+    with open("mental_health_agent_result.json", "r") as f:
+        json_file = json.load(f)
+        
     schedule_rules = json_file["specialist"]["schedule"] if json_file else "Mon-Wed 09:00-17:00; Sat 10:00-14:00"
     today = datetime(2025, 11, 22)
 

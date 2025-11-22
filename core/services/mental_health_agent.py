@@ -525,7 +525,11 @@ def main():
             # All information collected, process the request
             print("\n" + "="*70)
             result = agent.process_collected_information()
+            # Save the result in a JSON file
+            with open("mental_health_agent_result.json", "w") as f:
+                json.dump(result, f, indent=2)
             print(result)
+            result = json.loads(json.dumps(result))
             return result
 
     return None

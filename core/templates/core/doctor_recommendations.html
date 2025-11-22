@@ -61,6 +61,14 @@
             <p style="line-height: 1.7; margin: 0; color: #555;">{{ doctor_recommendation.match_reasoning }}</p>
         </section>
 
+        {% if doctor_recommendation.recommendations %}
+        <!-- Personalized Recommendations -->
+        <section style="margin-top: 2rem; padding: 1.5rem; background: #fff8e1; border-radius: 8px; border-left: 4px solid #ffa726;">
+            <h3 style="margin-top: 0; color: #f57c00; font-size: 1.1rem;">Personalized Recommendations for You</h3>
+            <div style="line-height: 1.8; color: #555; white-space: pre-line;">{{ doctor_recommendation.recommendations }}</div>
+        </section>
+        {% endif %}
+
     </article>
 
     <!-- Availability Question -->
@@ -69,7 +77,7 @@
         <p style="color: #666; font-size: 1.1rem; margin: 1.5rem 0;">
             Would you like to check the best availability to book an appointment with {{ doctor_recommendation.doctor.name }}?
         </p>
-        <a href="{% url 'core:availability' %}" 
+        <a href="{% url 'core:availability_preference' %}" 
            role="button" 
            style="margin-top: 1rem;">
             Check Best Availability

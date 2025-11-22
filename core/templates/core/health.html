@@ -38,23 +38,7 @@
         <h3 style="color: #2e7d32; margin-top: 0;">✓ Analysis Complete</h3>
         <p><strong>Thank you, we've processed your submission and will contact you at {{ email }}</strong></p>
         
-        <!-- Quick Triage Results (First Agent) -->
-        <details open style="margin: 1rem 0; padding: 1rem; background: white; border-radius: 8px;">
-            <summary style="cursor: pointer; font-weight: bold; color: #2e7d32;">Quick Triage Assessment</summary>
-            <div style="padding: 1rem 0;">
-                <ul style="list-style: none; padding: 0;">
-                    <li style="margin: 0.5rem 0;"><strong>Category:</strong> {{ analysis.category|title }}</li>
-                    <li style="margin: 0.5rem 0;"><strong>Urgency Level:</strong> {{ analysis.urgency|title }}</li>
-                    <li style="margin: 0.5rem 0;"><strong>Initial Assessment:</strong> {{ analysis.reasoning }}</li>
-                </ul>
-            </div>
-        </details>
-        
-        <!-- Complete Unified Report -->
-        <details open style="margin: 1rem 0; padding: 1rem; background: white; border-radius: 8px;">
-            <summary style="cursor: pointer; font-weight: bold; color: #1565c0;">Complete Clinical Report (User Data + AI Analysis)</summary>
-            <pre style="white-space: pre-wrap; font-size: 0.9rem; margin: 1rem 0; padding: 1rem; background: #f9f9f9; border-radius: 4px; overflow-x: auto; line-height: 1.6;">{{ submission.full_text_content }}</pre>
-        </details>
+      
         
         <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #ddd;">
             <p style="font-size: 0.9rem; color: #666;">

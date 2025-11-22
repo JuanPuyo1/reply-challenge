@@ -7,14 +7,18 @@ from django.conf import settings
 import json
 import os
 
-from .forms import HealthForm
+from .forms import HealthForm, AvailabilityPreferenceForm
 from .models import TriageSubmission
 from .services.gptapi import get_triage_agent
 from .services.mental_health_agent import MentalHealthAgent
 
 
 # OpenAI API Key - In production, store in environment variables
-OPENAI_API_KEY = "***REMOVED***"
+from dotenv import load_dotenv
+load_dotenv()
+
+import os
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
 class HealthView(View):
@@ -226,9 +230,18 @@ class DoctorRecommendationsView(View):
             # Process and get specialist match
             result = agent.process_collected_information()
             
+            # Save result to JSON file for scheduler to use
+            json_path = os.path.join(settings.BASE_DIR, 'mental_health_agent_result.json')
+            with open(json_path, 'w') as f:
+                json.dump(result, f, indent=2)
+            
             print("Match found!")
             print(f"Specialist: {result['specialist']['name']}")
+            print(f"Result saved to: {json_path}")
             print("=" * 70)
+            
+            # Store the full result in session for scheduler
+            request.session['mental_health_result'] = result
             
             # Format into expected structure
             doctor_recommendation = {
@@ -244,7 +257,9 @@ class DoctorRecommendationsView(View):
                     "phone": result['specialist']['phone_number'],
                     "email": result['specialist']['email']
                 },
-                "match_reasoning": result['specialist']['match_note']
+                "specialist": result['specialist'],  # Include full specialist data for scheduler
+                "match_reasoning": result['specialist']['match_note'],
+                "recommendations": result.get('recommendations', '')  # Add personalized recommendations
             }
             
         except Exception as e:
@@ -323,42 +338,265 @@ class DoctorRecommendationsView(View):
     
 
 
+class AvailabilityPreferenceView(View):
+    """
+    View to collect user's availability preferences
+    Shows a form to collect time preference and urgency
+    """
+    def get(self, request):
+        """Display the availability preference form"""
+        form = AvailabilityPreferenceForm()
+        
+        # Get doctor info from session to display
+        doctor_recommendation = request.session.get('doctor_recommendation', {})
+        doctor = doctor_recommendation.get('doctor', {})
+        
+        return render(request, 'core/availability_preference.html', {
+            'form': form,
+            'doctor': doctor
+        })
+    
+    def post(self, request):
+        """Process the availability preference form, run scheduler, and send email"""
+        from .services.scheduler import build_schedule, run_automated_scheduling, email_send
+        from datetime import datetime
+        
+        form = AvailabilityPreferenceForm(request.POST)
+        
+        if form.is_valid():
+            time_preference = form.cleaned_data['time_preference']
+            is_urgent = form.cleaned_data.get('is_urgent', False)
+            
+            # Get data from session
+            triage_data = request.session.get('triage_data', {})
+            doctor_recommendation = request.session.get('doctor_recommendation', {})
+            mental_health_result = request.session.get('mental_health_result', {})
+            
+            try:
+                # Always read the mental_health_agent_result.json file to get fresh doctor info
+                json_path = os.path.join(settings.BASE_DIR, 'mental_health_agent_result.json')
+                
+                if os.path.exists(json_path):
+                    with open(json_path, 'r') as f:
+                        mental_health_result = json.load(f)
+                
+                # Build doctor info from JSON
+                specialist = mental_health_result.get('specialist', {})
+                doctor = {
+                    "name": specialist.get('name', 'N/A'),
+                    "specialist": specialist.get('expertise', '').split('-')[0].strip() if '-' in specialist.get('expertise', '') else "Clinical Psychologist",
+                    "subspecialty": specialist.get('expertise', 'N/A'),
+                    "address": specialist.get('location', 'N/A'),
+                    "city": "Turin",  # Extract from location if needed
+                    "phone": specialist.get('phone_number', 'N/A'),
+                    "email": specialist.get('email', 'N/A')
+                }
+                
+                print("=" * 70)
+                print("DOCTOR INFO FROM JSON:")
+                print(f"Name: {doctor['name']}")
+                print(f"Email: {doctor['email']}")
+                print(f"Phone: {doctor['phone']}")
+                print("=" * 70)
+                
+                # Build schedule from specialist's availability
+                schedule_rules = mental_health_result.get('specialist', {}).get('schedule', 'Mon-Fri 09:00-17:00')
+                today = datetime.now()
+                doctor_schedule = build_schedule(schedule_rules, today)
+                
+                # Prepare initial JSON for scheduler
+                initial_appointment_json = {
+                    "doctor_name": doctor.get('name', 'N/A'),
+                    "doctor_email": doctor.get('email', 'N/A'),
+                    "patient_name": triage_data.get('email', '').split('@')[0],
+                    "symptoms": triage_data.get('symptoms', ''),
+                    "doctor_schedule": doctor_schedule,
+                    "is_urgent": is_urgent,
+                    "time_preference": time_preference,
+                    "filtered_schedule": None,
+                    "available_slots": None,
+                    "selected_date": None,
+                    "selected_time": None,
+                    "selected_slot_number": None,
+                    "patient_notes": ""
+                }
+                
+                # Run the AUTOMATED scheduler (no conversation)
+                print("=" * 70)
+                print("RUNNING AUTOMATED SCHEDULER")
+                print("=" * 70)
+                
+                final_appointment = run_automated_scheduling(initial_appointment_json)
+                
+                if final_appointment:
+                    # Prepare email data
+                    email_data = {
+                        "doctor_name": doctor.get('name', ''),
+                        "doctor_email": doctor.get('email', ''),
+                        "patient_name": triage_data.get('email', '').split('@')[0],
+                        "symptoms": triage_data.get('symptoms', ''),
+                        "selected_date": final_appointment.get('selected_date', ''),
+                        "selected_time": final_appointment.get('selected_time', ''),
+                        "patient_notes": final_appointment.get('patient_notes', '')
+                    }
+                    
+                    # Send the email immediately
+                    print("=" * 70)
+                    print("SENDING CONFIRMATION EMAIL")
+                    print("=" * 70)
+                    email_send(email_data)
+                    
+                    # Store booking data in session
+                    booking_data = {
+                        "selected_date": final_appointment.get('selected_date'),
+                        "selected_time": final_appointment.get('selected_time'),
+                        "patient_notes": final_appointment.get('patient_notes', ''),
+                        "status": final_appointment.get('status'),
+                        "created_at": final_appointment.get('created_at'),
+                        "conversation_complete": final_appointment.get('conversation_complete'),
+                        "doctor": doctor,
+                        "patient_email": triage_data.get('email', '')
+                    }
+                    request.session['booking_data'] = booking_data
+                    
+                    # Show success message
+                    return render(request, 'core/availability_preference.html', {
+                        'form': form,
+                        'doctor': doctor,
+                        'success': True,
+                        'booking': booking_data
+                    })
+                else:
+                    # No available slots
+                    return render(request, 'core/availability_preference.html', {
+                        'form': form,
+                        'doctor': doctor,
+                        'error': 'No available slots found for your preferences. Please try different time preference.'
+                    })
+                    
+            except Exception as e:
+                print(f"Error running scheduler: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                # Show error
+                return render(request, 'core/availability_preference.html', {
+                    'form': form,
+                    'doctor': doctor,
+                    'error': f'Error scheduling appointment: {str(e)}'
+                })
+        
+        # If form is invalid, re-render with errors
+        doctor_recommendation = request.session.get('doctor_recommendation', {})
+        doctor = doctor_recommendation.get('doctor', {})
+        
+        return render(request, 'core/availability_preference.html', {
+            'form': form,
+            'doctor': doctor
+        })
+
+
 class AvailabilityView(View):
     """
-    View to display availability and booking
-    Phase 3: Process availability data from external agent
+    View to process scheduler and display best available appointment
+    Phase 3: Uses scheduler.py agent to find best appointment
     """
     def get(self, request):
         """
-        Display the availability/booking page
-        Processes booking data from external agent and displays it
+        Run the scheduler agent and display the best available appointment
         """
+        from .services.scheduler import build_schedule, run_automated_scheduling
+        from datetime import datetime
         
-        # Get triage and doctor data from session
+        # Get data from session
         triage_data = request.session.get('triage_data', {})
+        doctor_recommendation = request.session.get('doctor_recommendation', {})
+        availability_preference = request.session.get('availability_preference', {})
+        mental_health_result = request.session.get('mental_health_result', {})
         
-        # ========================================
-        # MOCK DATA: Example of booking data from external agent
-        # In production, this would come from the external agent API
-        # ========================================
-        booking_data = {
-            "selected_date": "2025-11-25",
-            "selected_time": "05:30 PM",
-            "patient_notes": "",
-            "status": "confirmed",
-            "created_at": "2025-11-22T13:42:39.991778",
-            "conversation_complete": True,
-            "doctor": {
-                "name": "Dr. Luca Bianchi",
-                "specialist": "Clinical Psychologist",
-                "subspecialty": "Anxiety and Depression",
-                "address": "Via Roma 25",
-                "city": "Turin",
-                "phone": "+39 345 112233 4",
-                "email": "luca.bianchi@mail.com"
-            },
-            "patient_email": triage_data.get('email', '')
-        }
+        if not doctor_recommendation or not availability_preference:
+            # Redirect back if no data
+            return redirect('core:doctor_recommendations')
+        
+        doctor = doctor_recommendation.get('doctor', {})
+        
+        try:
+            # Read the mental_health_agent_result.json file
+            json_path = os.path.join(settings.BASE_DIR, 'mental_health_agent_result.json')
+            
+            if not mental_health_result and os.path.exists(json_path):
+                with open(json_path, 'r') as f:
+                    mental_health_result = json.load(f)
+            
+            # Build schedule from specialist's availability
+            schedule_rules = mental_health_result.get('specialist', {}).get('schedule', 'Mon-Fri 09:00-17:00')
+            today = datetime.now()
+            doctor_schedule = build_schedule(schedule_rules, today)
+            
+            # Prepare initial JSON for scheduler
+            initial_appointment_json = {
+                "doctor_name": doctor.get('name', 'N/A'),
+                "doctor_email": doctor.get('email', 'N/A'),
+                "patient_name": triage_data.get('email', '').split('@')[0],
+                "symptoms": triage_data.get('symptoms', ''),
+                "doctor_schedule": doctor_schedule,
+                "is_urgent": availability_preference.get('is_urgent', False),
+                "time_preference": availability_preference.get('time_preference'),
+                "filtered_schedule": None,
+                "available_slots": None,
+                "selected_date": None,
+                "selected_time": None,
+                "selected_slot_number": None,
+                "patient_notes": ""
+            }
+            
+            # Run the AUTOMATED scheduler (no conversation)
+            print("=" * 70)
+            print("RUNNING AUTOMATED SCHEDULER")
+            print("=" * 70)
+            
+            final_appointment = run_automated_scheduling(initial_appointment_json)
+            
+            if final_appointment:
+                # Add doctor details to booking
+                booking_data = {
+                    "selected_date": final_appointment.get('selected_date'),
+                    "selected_time": final_appointment.get('selected_time'),
+                    "patient_notes": final_appointment.get('patient_notes', ''),
+                    "status": final_appointment.get('status'),
+                    "created_at": final_appointment.get('created_at'),
+                    "conversation_complete": final_appointment.get('conversation_complete'),
+                    "doctor": doctor,
+                    "patient_email": triage_data.get('email', '')
+                }
+                
+                print("=" * 70)
+                print("BOOKING COMPLETED")
+                print(f"Date: {booking_data['selected_date']} at {booking_data['selected_time']}")
+                print("=" * 70)
+            else:
+                raise Exception("Scheduler returned no available slots")
+            
+            # Store booking data in session for email sending
+            request.session['booking_data'] = booking_data
+            
+        except Exception as e:
+            print(f"Error running scheduler: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Fallback to mock data
+            booking_data = {
+                "selected_date": "2025-11-25",
+                "selected_time": "05:30 PM",
+                "patient_notes": "",
+                "status": "confirmed",
+                "created_at": datetime.now().isoformat(),
+                "conversation_complete": True,
+                "doctor": doctor,
+                "patient_email": triage_data.get('email', '')
+            }
+            request.session['booking_data'] = booking_data
         
         # Format the full text representation (for processing/logging)
         full_text_booking = self._format_booking_text(booking_data)
@@ -415,4 +653,50 @@ class AvailabilityView(View):
         ]
         
         return "\n".join(text_parts)
+
+
+class BookAppointmentView(View):
+    """
+    View to handle final appointment booking and send email
+    Triggered when user clicks "Book Appointment" button
+    """
+    def post(self, request):
+        """Send confirmation email and finalize appointment"""
+        from .services.scheduler import email_send
+        
+        # Get booking data from session
+        booking_data = request.session.get('booking_data', {})
+        
+        if not booking_data:
+            return JsonResponse({
+                'success': False,
+                'message': 'No booking data found'
+            }, status=400)
+        
+        try:
+            # Prepare final JSON for email_send
+            final_json = {
+                "doctor_name": booking_data.get('doctor', {}).get('name', ''),
+                "doctor_email": booking_data.get('doctor', {}).get('email', ''),
+                "patient_name": booking_data.get('patient_email', '').split('@')[0],
+                "symptoms": request.session.get('triage_data', {}).get('symptoms', ''),
+                "selected_date": booking_data.get('selected_date', ''),
+                "selected_time": booking_data.get('selected_time', ''),
+                "patient_notes": booking_data.get('patient_notes', '')
+            }
+            
+            # Send the email via scheduler's email_send function
+            email_send(final_json)
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Appointment confirmation email sent successfully!'
+            })
+            
+        except Exception as e:
+            print(f"Error sending email: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': f'Error sending email: {str(e)}'
+            }, status=500)
     

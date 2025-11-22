@@ -53,3 +53,33 @@ class HealthForm(forms.Form):
         }),
         help_text="Any other information that might help us match you with the right specialist"
     )
+
+
+class AvailabilityPreferenceForm(forms.Form):
+    """Form to collect user's time preference for scheduling"""
+    
+    TIME_PREFERENCE_CHOICES = [
+        ('', 'Select your preferred time...'),
+        ('morning', 'Morning (6:00 AM - 12:00 PM)'),
+        ('afternoon', 'Afternoon (12:00 PM - 6:00 PM)'),
+        ('evening', 'Evening (6:00 PM - 11:00 PM)'),
+    ]
+    
+    time_preference = forms.ChoiceField(
+        label="When would you prefer to have your appointment?",
+        choices=TIME_PREFERENCE_CHOICES,
+        required=True,
+        widget=forms.Select(attrs={
+            'class': 'form-control',
+        }),
+        help_text="Select your preferred time of day for the appointment"
+    )
+    
+    is_urgent = forms.BooleanField(
+        label="Is this urgent?",
+        required=False,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input',
+        }),
+        help_text="Check this if you need an appointment as soon as possible"
+    )
