@@ -2,3 +2,5 @@
 __pycache__/
 *.pyc
 db.sqlite3
+mental_health_agent_result.json
+replacements.txt

@@ -311,31 +311,7 @@ def update_appointment_json(appointment_json, field, value):
         "message": f"Updated {field} in appointment JSON"
     }
 def email_send(final_json):
-    # Build the message for Lambda
-    name = final_json["patient_name"]
-    email = "no-reply@yourapp.com"   # Lambda requires 'email'; use a placeholder if needed
-
-    message = (
-        f"Dear {final_json['doctor_name']}, patient {final_json['patient_name']} "
-        f"has booked an appointment on {final_json['selected_date']} at "
-        f"{final_json['selected_time']}. Symptoms: {final_json['symptoms']}. "
-        f"Notes: {final_json.get('patient_notes', '')}."
-    )
-
-    payload = {
-        "name": name,
-        "email": email,
-        "message": message
-    }
-
-    api = "https://w5ptej3v39.execute-api.us-east-1.amazonaws.com/Contact"
-
-    try:
-        response = requests.post(api, json=payload)
-        response.raise_for_status()
-        print("Email sent successfully:", response.text)
-    except requests.exceptions.RequestException as e:
-        print("Error sending email:", e)
+    pass
 
 
 def finalize_appointment(appointment_json):
